@@ -1,10 +1,11 @@
-
 {
   "name": "Room Power Aggregator",
-  "render_readme": true,
+  "domain": "room_power_aggregator",
   "content_in_root": false,
+  "render_readme": true,
   "homeassistant": "2024.6.0",
   "country": "BE",
-  "domain": "room_power_aggregator",
-  "iot_class": "local_polling"
+  "iot_class": "local_polling",
+  "repository": "https://github.com/jebeke65/room-power-aggregator",
+  "authors": ["jebeke65"]
 }
