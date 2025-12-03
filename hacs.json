@@ -1,1 +1,10 @@
 
+{
+  "name": "Room Power Aggregator",
+  "render_readme": true,
+  "content_in_root": false,
+  "homeassistant": "2024.6.0",
+  "country": "BE",
+  "domain": "room_power_aggregator",
+  "iot_class": "local_polling"
+}
