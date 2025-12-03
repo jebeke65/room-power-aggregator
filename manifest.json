@@ -1,0 +1,10 @@
+{
+  "domain": "room_power_aggregator",
+  "name": "Room Power Aggregator",
+  "version": "1.0.0",
+  "documentation": "https://example.com",
+  "requirements": [],
+  "codeowners": ["@your"],
+  "config_flow": true,
+  "iot_class": "local_polling"
+}
