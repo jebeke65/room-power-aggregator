@@ -7,3 +7,7 @@ CONF_DEBUG = "debug"
 
 PLATFORMS = ["sensor"]
 UPDATE_INTERVAL = 5  # seconds
+
+# Frontend (bundled Lovelace cards)
+FRONTEND_URL_PATH = f"/{DOMAIN}"
+FRONTEND_BUNDLE_FILENAME = "room-power-aggregator-sankey.js"
