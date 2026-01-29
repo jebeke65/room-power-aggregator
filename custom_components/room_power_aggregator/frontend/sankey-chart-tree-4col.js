@@ -7,32 +7,34 @@ class SankeyChartTree4Col extends HTMLElement {
     this._busy = false;
   }
 
-  setConfig(config) {
-    // Clone: HA may freeze config objects -> Safari throws on mutation
-    var cfg = config || {};
-    var cloned;
-    try {
-      cloned = structuredClone(cfg);
-    } catch (e) {
-      cloned = JSON.parse(JSON.stringify(cfg || {}));
-    }
+setConfig(config) {
+  // Clone first: HA may freeze the config object (Safari throws on mutation)
+  var cfg = config || {};
+  var cloned;
 
-    this._config = cloned || {};
-    this._config.tree_attribute = this._config.tree_attribute || "graph";
-
-    // sources: { supply: [...], consume: [...] }
-    if (!this._config.sources) this._config.sources = {};
-    if (!Array.isArray(this._config.sources.supply)) this._config.sources.supply = [];
-    if (!Array.isArray(this._config.sources.consume)) this._config.sources.consume = [];
-
-    this._config.room_entity_match = this._config.room_entity_match || "_power_total";
-    this._config.exclude_room_entity = this._config.exclude_room_entity || "sensor.all_rooms_power_total";
-
-    this._config.sort_rooms = this._config.sort_rooms !== false;
-    this._config.sort_devices = this._config.sort_devices !== false;
-
-    if (!this._config.sankey) this._config.sankey = {};
+  try {
+    // Modern browsers (incl recent Safari)
+    cloned = structuredClone(cfg);
+  } catch (e) {
+    // Fallback
+    cloned = JSON.parse(JSON.stringify(cfg || {}));
   }
+
+  this._config = cloned || {};
+  this._config.tree_attribute = this._config.tree_attribute || "graph";
+
+  if (!this._config.sources) this._config.sources = {};
+  if (!Array.isArray(this._config.sources.supply)) this._config.sources.supply = [];
+  if (!Array.isArray(this._config.sources.consume)) this._config.sources.consume = [];
+
+  this._config.room_entity_match = this._config.room_entity_match || "_power_total";
+  this._config.exclude_room_entity = this._config.exclude_room_entity || "sensor.all_rooms_power_total";
+
+  this._config.sort_rooms = this._config.sort_rooms !== false;
+  this._config.sort_devices = this._config.sort_devices !== false;
+
+  if (!this._config.sankey) this._config.sankey = {};
+}
 
   set hass(hass) {
     this._hass = hass;
@@ -77,7 +79,9 @@ class SankeyChartTree4Col extends HTMLElement {
       type: "custom:sankey-chart",
       title: title,
       min_state: 0,
-      sections: [{ entities: [{ type: "entity", entity_id: "sensor.none", name: msg }] }],
+      sections: [
+        { entities: [{ type: "entity", entity_id: "sensor.none", name: msg }] }
+      ]
     });
     this._inner.hass = this._hass;
   }
@@ -197,6 +201,7 @@ class SankeyChartTree4Col extends HTMLElement {
       }
 
       // -------- Column 2: Consume (manual) --------
+      // Any consume item with is_house: true OR entity_id == sensor.all_rooms_power_total will feed rooms.
       var consumeEntities = [];
       var consumeIds = [];
 
@@ -206,7 +211,11 @@ class SankeyChartTree4Col extends HTMLElement {
 
         var isHouse = (ce.is_house === true) || (ce.entity_id === "sensor.all_rooms_power_total");
 
-        var objC = { type: "entity", entity_id: ce.entity_id, name: ce.name || ce.entity_id };
+        var objC = {
+          type: "entity",
+          entity_id: ce.entity_id,
+          name: ce.name || ce.entity_id
+        };
         if (ce.color) objC.color = ce.color;
 
         if (isHouse) {
@@ -219,7 +228,7 @@ class SankeyChartTree4Col extends HTMLElement {
         consumeIds.push(ce.entity_id);
       }
 
-      // Ensure at least one house node feeds rooms
+      // Fallback: ensure at least one house node exists
       var hasHouseNode = false;
       for (var hc = 0; hc < consumeEntities.length; hc++) {
         if (consumeEntities[hc].children && consumeEntities[hc].children.length) { hasHouseNode = true; break; }
@@ -243,13 +252,18 @@ class SankeyChartTree4Col extends HTMLElement {
         var se = this._config.sources.supply[s];
         if (!se || typeof se.entity_id !== "string") continue;
 
-        var objS = { type: "entity", entity_id: se.entity_id, name: se.name || se.entity_id, children: consumeIds.slice() };
+        var objS = {
+          type: "entity",
+          entity_id: se.entity_id,
+          name: se.name || se.entity_id,
+          children: consumeIds.slice()
+        };
         if (se.color) objS.color = se.color;
 
         supplyEntities.push(objS);
       }
 
-      // -------- Column 3 rooms + colors --------
+      // -------- Column 3 nodes + room colors --------
       var roomColorById = {};
       var roomSectionEntities = [];
 
@@ -258,7 +272,13 @@ class SankeyChartTree4Col extends HTMLElement {
         var col = this._hashColor(reid);
         roomColorById[reid] = col;
 
-        var objR = { type: "entity", entity_id: reid, name: rooms[r3].name, color: col };
+        var objR = {
+          type: "entity",
+          entity_id: reid,
+          name: rooms[r3].name,
+          color: col
+        };
+
         var chList = roomChildren[reid];
         if (chList && chList.length) objR.children = chList;
 
@@ -272,7 +292,11 @@ class SankeyChartTree4Col extends HTMLElement {
         var rId = deviceRoom[devId];
         var devColor = rId ? roomColorById[rId] : undefined;
 
-        var objD = { type: "entity", entity_id: devId, name: deviceEntries[k].name };
+        var objD = {
+          type: "entity",
+          entity_id: devId,
+          name: deviceEntries[k].name
+        };
         if (devColor) objD.color = devColor;
 
         deviceSectionEntities.push(objD);
@@ -281,7 +305,6 @@ class SankeyChartTree4Col extends HTMLElement {
       // -------- Build sankey config --------
       var baseConfig = {
         type: "custom:sankey-chart",
-        title: "Auto Sankey (4 cols)",
         min_state: 0,
         sections: [
           { entities: supplyEntities },        // col 1
@@ -290,6 +313,12 @@ class SankeyChartTree4Col extends HTMLElement {
           { entities: deviceSectionEntities }  // col 4
         ]
       };
+
+      // Only set a title if user provided one (and it's not empty/whitespace)
+      const t = (this._config && typeof this._config.title === "string") ? this._config.title.trim() : "";
+      if (t) {
+        baseConfig.title = t;
+      }
 
       // Merge user sankey options (but never allow user to override sections)
       var merged = {};

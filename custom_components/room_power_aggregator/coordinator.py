@@ -15,6 +15,7 @@ from homeassistant.helpers import (
 )
 
 from .const import (
+    DOMAIN,
     UPDATE_INTERVAL,
     CONF_LABEL_NAME,
     CONF_ONLY_POWER_DEVICE_CLASS,
@@ -35,11 +36,11 @@ class RoomPowerCoordinator(DataUpdateCoordinator):
         )
         self.entry = entry
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> Dict[str, List[str]]:
         """Compute which room totals should exist and with which members."""
 
         data = {**self.entry.data, **self.entry.options}
-        label_name = data.get(CONF_LABEL_NAME)
+        label_name = (data.get(CONF_LABEL_NAME) or "").strip()
         only_power = data.get(CONF_ONLY_POWER_DEVICE_CLASS, True)
         include_kw = data.get(CONF_INCLUDE_KW, True)
         debug = data.get(CONF_DEBUG, False)
@@ -49,9 +50,7 @@ class RoomPowerCoordinator(DataUpdateCoordinator):
         dr_reg = dr.async_get(self.hass)
         lr_reg = lr.async_get(self.hass)
 
-        #
-        # Resolve label IDs for filtering
-        #
+        # Resolve label IDs for filtering (optional)
         target_label_ids = None
         if label_name:
             target_label_ids = {
@@ -60,13 +59,20 @@ class RoomPowerCoordinator(DataUpdateCoordinator):
                 if label.name == label_name
             }
 
-        #
-        # Scan all sensor entities
-        #
         rooms: Dict[str, List[str]] = {}
 
         for ent in er_reg.entities.values():
+            # Only sensors
             if not ent.entity_id.startswith("sensor."):
+                continue
+
+            # ✅ CRITICAL: exclude sensors created by THIS integration (prevents feedback loop)
+            # platform is the integration domain that created the entity
+            if getattr(ent, "platform", None) == DOMAIN:
+                continue
+
+            # also exclude anything tied to this config entry (extra safety)
+            if getattr(ent, "config_entry_id", None) == self.entry.entry_id:
                 continue
 
             state = self.hass.states.get(ent.entity_id)
@@ -76,7 +82,6 @@ class RoomPowerCoordinator(DataUpdateCoordinator):
             device_class = state.attributes.get("device_class")
             unit = state.attributes.get("unit_of_measurement")
 
-            # filters
             if only_power and device_class != "power":
                 continue
 
@@ -86,12 +91,12 @@ class RoomPowerCoordinator(DataUpdateCoordinator):
             if unit == "kW" and not include_kw:
                 continue
 
-            # label filtering
+            # Label filtering (optional)
             if target_label_ids:
                 if not ent.labels or not (ent.labels & target_label_ids):
                     continue
 
-            # area detection
+            # Determine area
             area_id = ent.area_id
             if not area_id and ent.device_id:
                 dev = dr_reg.devices.get(ent.device_id)
@@ -103,8 +108,7 @@ class RoomPowerCoordinator(DataUpdateCoordinator):
             area = ar_reg.areas.get(area_id)
             area_name = area.name if area else area_id
 
-            rooms.setdefault(area_name, [])
-            rooms[area_name].append(ent.entity_id)
+            rooms.setdefault(area_name, []).append(ent.entity_id)
 
         if debug:
             self.logger.warning("ROOM POWER SCAN RESULT: %s", rooms)
