@@ -6,6 +6,5 @@
   "homeassistant": "2024.6.0",
   "country": "BE",
   "iot_class": "local_polling",
-  "repository": "https://github.com/jebeke65/room-power-aggregator",
-  "authors": ["jebeke65"]
+  "repository": "https://github.com/jebeke65/room-power-aggregator"
 }
