@@ -1,17 +1,12 @@
 {
   "domain": "room_power_aggregator",
   "name": "Room Power Aggregator",
-  "version": "2.0",
+  "codeowners": ["@jebeke65"],
+  "config_flow": true,
+  "dependencies": ["frontend", "http"],
   "documentation": "https://github.com/jebeke65/room-power-aggregator",
+  "iot_class": "local_polling",
   "issue_tracker": "https://github.com/jebeke65/room-power-aggregator/issues",
   "requirements": [],
-  "codeowners": [
-    "@jebeke65"
-  ],
-  "config_flow": true,
-  "iot_class": "local_polling",
-  "dependencies": [
-    "frontend",
-    "http"
-  ]
+  "version": "2.0"
 }
