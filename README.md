@@ -7,6 +7,10 @@ supported power sensors inside that room.
 This provides an immediate overview of **total live power consumption per room**,
 fully synchronized with your Home Assistant areas.
 
+The integration also generates a **Sankey-ready YAML** file that visualizes
+the full supply → distribution → consumption tree, ready to drop into
+Lovelace via `custom:config-wrapper-card`.
+
 ---
 
 ## ✨ Features
@@ -15,6 +19,9 @@ fully synchronized with your Home Assistant areas.
 ✔ Aggregates power (W) or kW (converted to W)  
 ✔ Optional label filtering (include only sensors with a specific label)  
 ✔ Optional device_class filtering (only sensors with `device_class: power`)  
+✔ **Sankey tree sensor** with full supply/consume hierarchy  
+✔ **Unaccounted-power sensor** (gap between total inflow and tracked rooms)  
+✔ **Auto-generated Sankey YAML** at `/config/www/room_configurator/sankey.yaml`  
 ✔ Automatically updates when:
 - new entities appear
 - entities disappear
@@ -26,28 +33,29 @@ fully synchronized with your Home Assistant areas.
 - `source_entities`: list of all sensors used in the calculation  
 - `source_entity_power_w`: dictionary with each entity's current power in W  
 
-✔ Sensors are grouped under one device: **Room Power Aggregator**  
+✔ Sensors grouped under one device: **Room Power Aggregator**  
 ✔ Fully UI-configurable (config flow + options flow)  
-✔ 100% Home Assistant 2024/2025 compatible  
 
 ---
 
-## 📦 Installation via HACS
+## 📦 Installation
 
-### **Method 1 — HACS Custom Repository**
-1. Open Home Assistant  
-2. Go to **HACS → Integrations**  
-3. Click the **⋮ menu → Custom repositories**  
-4. Add:
+### Via HACS (recommended)
 
-```
-https://github.com/jebeke65/room-power-aggregator
-```
+1. Open **HACS → Integrations**
+2. **⋮ → Custom repositories**, add:
+   ```
+   https://github.com/jebeke65/room-power-aggregator
+   ```
+   Category: **Integration**
+3. Install **Room Power Aggregator** and restart Home Assistant.
 
-Category: **Integration**
+### Required companion cards (HACS)
 
-5. Install **Room Power Aggregator**  
-6. Restart Home Assistant after installation  
+For the Sankey visualization, install these as Lovelace plugins:
+
+- [`ha-sankey-chart`](https://github.com/MindFreeze/ha-sankey-chart) — renders the Sankey
+- [`config-wrapper-card`](https://github.com/custom-cards/config-template-card) (or equivalent) — loads the generated YAML
 
 ---
 
@@ -55,26 +63,50 @@ Category: **Integration**
 
 After installation:
 
-1. Go to  
-   **Settings → Devices & Services → Add Integration**  
+1. **Settings → Devices & Services → Add Integration**
 2. Search for **Room Power Aggregator**
 
-### You can configure:
-
 | Setting | Description |
-|--------|-------------|
-| **Label name** | Only include entities with this label (optional) |
-| **Only power device_class** | Only sensors with `device_class: power` |
-| **Include kW** | Convert kW sensors to W and include them |
-| **Debug** | Extra log output for troubleshooting |
+|---|---|
+| `label_name` | Only include entities with this label (optional) |
+| `only_power_device_class` | Only sensors with `device_class: power` |
+| `include_kw` | Convert kW sensors to W and include them |
+| `supply_entities` | Entities representing power sources (solar, battery discharge, grid import) |
+| `consume_entities` | Entities representing power sinks (grid export, battery charge) |
+| `tree_sensor` | Expose the Sankey tree sensor |
+| `hide_devices_column` | Hide the per-device column in the generated Sankey |
+| `debug` | Extra log output for troubleshooting |
 
-Generated sensors look like:
+Room sensors are exposed as:
 
 ```
 sensor.living_room_power_total
 sensor.kitchen_power_total
 sensor.office_power_total
 ```
+
+---
+
+## 🌊 Sankey YAML export
+
+On every coordinator refresh, the integration writes a fully-formed Sankey
+configuration to:
+
+```
+/config/www/room_configurator/sankey.yaml
+```
+
+The folder is created automatically — no manual setup needed.
+
+### Use it in Lovelace
+
+```yaml
+type: custom:config-wrapper-card
+config_url: /local/room_configurator/sankey.yaml
+cache_bust: true
+```
+
+That's it — the card stays in sync with your live area/device topology.
 
 ---
 
@@ -96,22 +128,12 @@ source_entity_power_w:
 
 ## 🧠 How it works
 
-The integration:
-
-- Scans HA areas, devices, entities, labels  
-- Selects W and kW (converted) power sensors  
-- Groups them by area  
-- Computes a live total per room  
-- Updates automatically when HA updates  
-- Exposes results as native HA sensors  
-
----
-
-## 🔮 Planned Enhancements
-
-- Optional Lovelace dashboard auto-creation  
-- Per-room daily/weekly/monthly kWh stats  
-- Top-consumer attribution per room  
+- Scans HA areas, devices, entities, labels
+- Selects W and kW (converted) power sensors
+- Groups them by area, builds a supply/consume tree
+- Computes live per-room totals and unaccounted power
+- Exports the tree as a Sankey-ready YAML on every change
+- Exposes everything as native HA sensors
 
 ---
 
